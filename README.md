@@ -196,14 +196,16 @@ Die API ist anschliessend unter `http://localhost:7071/api/content/{short}` erre
 
 ```
 contentapi/
-├── Content.cs                   # Azure Function – HTTP Trigger (GET /api/content/{short})
-├── Program.cs                   # Host-Setup, DI-Registrierung aller Services
-├── host.json                    # Functions-Host-Konfiguration (Logging, App Insights)
-├── local.settings.json          # Lokale Einstellungen (nicht committen!)
+├── Program.cs                        # Host-Setup, DI-Registrierung aller Services
+├── host.json                         # Functions-Host-Konfiguration (Logging, App Insights)
+├── local.settings.json               # Lokale Einstellungen (nicht committen!)
+├── Functions/
+│   ├── Content.cs                    # Azure Function – HTTP Trigger (GET /api/content/{short})
+│   └── RegisterConfiguration.cs     # Azure Function – Admin HTTP Trigger (POST/DELETE /api/admin/registerConfiguration)
 ├── Models/
-│   └── ContentTypeConfig.cs     # Table Storage Entity – Zuordnung short → SiteId + ListId
+│   └── ContentTypeConfig.cs          # Table Storage Entity – Zuordnung short → SiteId + ListId
 └── Services/
-    └── SharepointListService.cs # Microsoft Graph-Zugriff auf SharePoint-Listen
+    └── SharepointListService.cs      # Microsoft Graph-Zugriff auf SharePoint-Listen
 ```
 
 ### Abhängigkeiten
@@ -222,7 +224,7 @@ contentapi/
 HTTP GET /api/content/{short}
     │
     ▼
-Content.cs (Azure Function)
+Functions/Content.cs (Azure Function)
     │  Lookup PartitionKey="config", RowKey=short
     ▼
 Azure Table Storage (ContentConfig)

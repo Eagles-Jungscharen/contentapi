@@ -29,14 +29,16 @@ Externe Websites (z.B. Wix) können so News-Feeds, Agenda-Feeds und andere Liste
 
 ```
 contentapi/
-├── Content.cs                  # Azure Function (HTTP Trigger)
-├── Program.cs                  # Host-Setup, DI-Registrierung
-├── host.json                   # Functions-Host-Konfiguration
-├── local.settings.json         # Lokale Einstellungen (nicht committen!)
+├── Program.cs                        # Host-Setup, DI-Registrierung
+├── host.json                         # Functions-Host-Konfiguration
+├── local.settings.json               # Lokale Einstellungen (nicht committen!)
+├── Functions/
+│   ├── Content.cs                    # Azure Function (HTTP Trigger, anonym)
+│   └── RegisterConfiguration.cs     # Azure Function (HTTP Trigger, Admin)
 ├── Models/
-│   └── ContentTypeConfig.cs    # Table Storage Entity – Zuordnung short → SiteId + ListId
+│   └── ContentTypeConfig.cs          # Table Storage Entity – Zuordnung short → SiteId + ListId
 └── Services/
-    └── SharepointListService.cs # Graph-Zugriff auf SharePoint-Listen
+    └── SharepointListService.cs      # Graph-Zugriff auf SharePoint-Listen
 ```
 
 ## Namespace-Konvention

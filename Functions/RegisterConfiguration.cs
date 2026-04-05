@@ -33,9 +33,7 @@ public class RegisterConfiguration(
         ContentTypeConfig? config;
         try
         {
-            config = await JsonSerializer.DeserializeAsync<ContentTypeConfig>(
-                req.Body,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            config = await req.ReadFromJsonAsync<ContentTypeConfig>();
         }
         catch (JsonException ex)
         {
