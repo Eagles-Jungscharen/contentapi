@@ -1,5 +1,6 @@
 using System.Text.Json;
 using EaglesJungscharen.Azure.ContentApi.Models;
+using EaglesJungscharen.Azure.ContentApi.Services;
 using GuedesPlace.AzureTools.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +11,12 @@ namespace EaglesJungscharen.Azure.ContentApi;
 
 public class RegisterConfiguration(
     ILogger<RegisterConfiguration> logger,
-    ExtendedAzureTableClientService tableClientService)
+    ExtendedAzureTableClientService tableClientService,
+    SharepointListService sharepointListService)
 {
     private readonly ILogger<RegisterConfiguration> _logger = logger;
     private readonly TypedAzureTableClient<ContentTypeConfig> _configTableClient = tableClientService.CreateAndRegisterTableClient<ContentTypeConfig>("ContentConfig");
+    private readonly SharepointListService _sharepointListService = sharepointListService;
 
     [Function("RegisterConfiguration")]
     public async Task<IActionResult> Run(
@@ -47,6 +50,24 @@ public class RegisterConfiguration(
             || string.IsNullOrWhiteSpace(config.ListId))
         {
             return new BadRequestObjectResult("Die Felder Key, SiteId und ListId sind Pflichtfelder.");
+        }
+
+        if (config.FeedType == FeedType.NEWS || config.FeedType == FeedType.AGENDA)
+        {
+            if (string.IsNullOrWhiteSpace(config.SortColumn))
+            {
+                return new BadRequestObjectResult(
+                    $"Das Feld SortColumn ist ein Pflichtfeld für FeedType '{config.FeedType}'.");
+            }
+
+            var isDateColumn = await _sharepointListService.IsDateColumnAsync(
+                config.SiteId, config.ListId, config.SortColumn);
+            if (!isDateColumn)
+            {
+                _logger.LogWarning("Spalte '{SortColumn}' ist kein Datum-Typ.", config.SortColumn);
+                return new BadRequestObjectResult(
+                    $"Die Spalte '{config.SortColumn}' ist kein Datum-Typ oder existiert nicht in der Liste.");
+            }
         }
 
         var existing = await _configTableClient.GetByIdAsync(config.Key, "config");

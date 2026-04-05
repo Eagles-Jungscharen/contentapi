@@ -37,4 +37,36 @@ public class SharepointListService(GraphServiceClient graphClient)
 
         return result;
     }
+
+    /// <summary>
+    /// Prüft ob eine Spalte in der angegebenen Liste vom Typ Datum ist.
+    /// </summary>
+    public async Task<bool> IsDateColumnAsync(string siteId, string listId, string columnName)
+    {
+        var response = await _graphClient
+            .Sites[siteId]
+            .Lists[listId]
+            .Columns
+            .GetAsync();
+
+        bool isDateColumn = false;
+
+        var pageIterator = PageIterator<ColumnDefinition, ColumnDefinitionCollectionResponse>.CreatePageIterator(
+            _graphClient,
+            response!,
+            column =>
+            {
+                if (string.Equals(column.Name, columnName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(column.DisplayName, columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    isDateColumn = column.DateTime != null;
+                    return false;
+                }
+                return true;
+            });
+
+        await pageIterator.IterateAsync();
+
+        return isDateColumn;
+    }
 }

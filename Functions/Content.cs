@@ -35,6 +35,50 @@ public class Content(
             configResult.Entity.SiteId,
             configResult.Entity.ListId);
 
-        return new OkObjectResult(items);
+        var result = ApplyFeedType(items, configResult.Entity);
+
+        return new OkObjectResult(result);
+    }
+
+    private static List<Dictionary<string, object?>> ApplyFeedType(
+        List<Dictionary<string, object?>> items,
+        ContentTypeConfig config)
+    {
+        if (config.FeedType == FeedType.CONTENT)
+            return items;
+
+        var sortColumn = config.SortColumn!;
+        var now = DateTimeOffset.UtcNow;
+
+        var withDates = items
+            .Select(item => (
+                item,
+                date: TryGetDateTimeOffset(item.GetValueOrDefault(sortColumn), out var dt) ? dt : (DateTimeOffset?)null))
+            .Where(x => x.date.HasValue);
+
+        if (config.FeedType == FeedType.NEWS)
+        {
+            return withDates
+                .Where(x => x.date!.Value < now)
+                .OrderByDescending(x => x.date!.Value)
+                .Select(x => x.item)
+                .ToList();
+        }
+        else // AGENDA
+        {
+            return withDates
+                .Where(x => x.date!.Value >= now)
+                .OrderBy(x => x.date!.Value)
+                .Select(x => x.item)
+                .ToList();
+        }
+    }
+
+    private static bool TryGetDateTimeOffset(object? value, out DateTimeOffset result)
+    {
+        result = default;
+        if (value is null) return false;
+        var str = value is System.Text.Json.JsonElement je ? je.GetString() : value?.ToString();
+        return str is not null && DateTimeOffset.TryParse(str, out result);
     }
 }
