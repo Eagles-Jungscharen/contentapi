@@ -1,3 +1,6 @@
+using EaglesJungscharen.Azure.ContentApi.Models;
+using EaglesJungscharen.Azure.ContentApi.Services;
+using GuedesPlace.AzureTools.Tables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -5,19 +8,33 @@ using Microsoft.Extensions.Logging;
 
 namespace EaglesJungscharen.Azure.ContentApi;
 
-public class Content
+public class Content(
+    ILogger<Content> logger,
+    ExtendedAzureTableClientService tableClientService,
+    SharepointListService sharepointListService)
 {
-    private readonly ILogger<Content> _logger;
-
-    public Content(ILogger<Content> logger)
-    {
-        _logger = logger;
-    }
+    private readonly ILogger<Content> _logger = logger;
+    private readonly TypedAzureTableClient<ContentTypeConfig> _configTableClient = tableClientService.CreateAndRegisterTableClient<ContentTypeConfig>("ContentConfig");
+    private readonly SharepointListService _sharepointListService = sharepointListService;
 
     [Function("Content")]
-    public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
+    public async Task<IActionResult> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "content/{short}")] HttpRequest req,
+        string @short)
     {
-        _logger.LogInformation("C# HTTP trigger function processed a request.");
-        return new OkObjectResult("Welcome to Azure Functions!");
+        _logger.LogInformation("Content request for short: {Short}", @short);
+
+        var configResult = await _configTableClient.GetByIdAsync(@short, "config");
+        if (configResult is null)
+        {
+            _logger.LogWarning("No configuration found for short: {Short}", @short);
+            return new NotFoundResult();
+        }
+
+        var items = await _sharepointListService.GetListItemsAsync(
+            configResult.Entity.SiteId,
+            configResult.Entity.ListId);
+
+        return new OkObjectResult(items);
     }
 }
