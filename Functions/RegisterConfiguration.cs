@@ -15,12 +15,12 @@ public class RegisterConfiguration(
     SharepointListService sharepointListService)
 {
     private readonly ILogger<RegisterConfiguration> _logger = logger;
-    private readonly TypedAzureTableClient<ContentTypeConfig> _configTableClient = tableClientService.CreateAndRegisterTableClient<ContentTypeConfig>("ContentConfig");
+    private readonly TypedAzureTableClient<ContentTypeConfig> _configTableClient = tableClientService.GetTypedTableClient<ContentTypeConfig>();
     private readonly SharepointListService _sharepointListService = sharepointListService;
 
     [Function("RegisterConfiguration")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Admin, "post", "delete", Route = "admin/registerConfiguration")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Admin, "post", "delete", Route = "registerConfiguration")] HttpRequest req)
     {
         if (req.Method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
         {

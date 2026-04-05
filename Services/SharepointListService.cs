@@ -69,4 +69,23 @@ public class SharepointListService(GraphServiceClient graphClient)
 
         return isDateColumn;
     }
+
+    /// <summary>
+    /// Prüft ob die SharePoint-Liste erreichbar und zugänglich ist.
+    /// </summary>
+    public async Task<bool> IsListAccessibleAsync(string siteId, string listId)
+    {
+        try
+        {
+            await _graphClient
+                .Sites[siteId]
+                .Lists[listId]
+                .GetAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

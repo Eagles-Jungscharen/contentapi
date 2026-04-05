@@ -14,7 +14,7 @@ public class Content(
     SharepointListService sharepointListService)
 {
     private readonly ILogger<Content> _logger = logger;
-    private readonly TypedAzureTableClient<ContentTypeConfig> _configTableClient = tableClientService.CreateAndRegisterTableClient<ContentTypeConfig>("ContentConfig");
+    private readonly TypedAzureTableClient<ContentTypeConfig> _configTableClient = tableClientService.GetTypedTableClient<ContentTypeConfig>();
     private readonly SharepointListService _sharepointListService = sharepointListService;
 
     [Function("Content")]
