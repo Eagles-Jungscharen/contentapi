@@ -39,6 +39,38 @@ public class SharepointListService(GraphServiceClient graphClient)
     }
 
     /// <summary>
+    /// Prüft ob eine Spalte in der angegebenen Liste vom Typ Boolean ist.
+    /// </summary>
+    public async Task<bool> IsBooleanColumnAsync(string siteId, string listId, string columnName)
+    {
+        var response = await _graphClient
+            .Sites[siteId]
+            .Lists[listId]
+            .Columns
+            .GetAsync();
+
+        bool isBooleanColumn = false;
+
+        var pageIterator = PageIterator<ColumnDefinition, ColumnDefinitionCollectionResponse>.CreatePageIterator(
+            _graphClient,
+            response!,
+            column =>
+            {
+                if (string.Equals(column.Name, columnName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(column.DisplayName, columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    isBooleanColumn = column.Boolean != null;
+                    return false;
+                }
+                return true;
+            });
+
+        await pageIterator.IterateAsync();
+
+        return isBooleanColumn;
+    }
+
+    /// <summary>
     /// Prüft ob eine Spalte in der angegebenen Liste vom Typ Datum ist.
     /// </summary>
     public async Task<bool> IsDateColumnAsync(string siteId, string listId, string columnName)

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using EaglesJungscharen.Azure.ContentApi.Models;
 using EaglesJungscharen.Azure.ContentApi.Services;
 using GuedesPlace.AzureTools.Tables;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
-namespace EaglesJungscharen.Azure.ContentApi;
+namespace EaglesJungscharen.Azure.ContentApi.Functions;
 
 public class Content(
     ILogger<Content> logger,
@@ -35,9 +36,47 @@ public class Content(
             configResult.Entity.SiteId,
             configResult.Entity.ListId);
 
-        var result = ApplyFeedType(items, configResult.Entity);
+        var activeItems = FilterActiveItems(items, configResult.Entity.ActiveColumn);
+        var sorted = ApplyFeedType(activeItems, configResult.Entity);
+        var result = ApplyColumnMapping(sorted, configResult.Entity.ColumnMappings);
 
         return new OkObjectResult(result);
+    }
+
+    private static List<Dictionary<string, object?>> FilterActiveItems(
+        List<Dictionary<string, object?>> items,
+        string activeColumn)
+    {
+        return items.Where(item => IsItemActive(item, activeColumn)).ToList();
+    }
+
+    private static bool IsItemActive(Dictionary<string, object?> item, string activeColumn)
+    {
+        if (!item.TryGetValue(activeColumn, out var value)) return false;
+        if (value is System.Text.Json.JsonElement je)
+            return je.ValueKind == System.Text.Json.JsonValueKind.True;
+        if (value is bool b) return b;
+        return false;
+    }
+
+    private static List<Dictionary<string, object?>> ApplyColumnMapping(
+        List<Dictionary<string, object?>> items,
+        List<ColumnMapping> columnMappings)
+    {
+        
+        if (columnMappings is null || columnMappings.Count == 0)
+            return items;
+
+        return [.. items.Select(item =>
+        {
+            var mapped = new Dictionary<string, object?>();
+            foreach (var mapping in columnMappings)
+            {
+                if (item.TryGetValue(mapping.ColumnName, out var val))
+                    mapped[mapping.Alias] = val;
+            }
+            return mapped;
+        })];
     }
 
     private static List<Dictionary<string, object?>> ApplyFeedType(

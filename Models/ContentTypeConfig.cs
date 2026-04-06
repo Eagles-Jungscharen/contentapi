@@ -7,4 +7,6 @@ public class ContentTypeConfig
     public string ListId { get; set; } = string.Empty;
     public FeedType FeedType { get; set; } = FeedType.CONTENT;
     public string? SortColumn { get; set; }
+    public string ActiveColumn { get; set; } = string.Empty;
+    public List<ColumnMapping> ColumnMappings { get; set; } = [];
 }

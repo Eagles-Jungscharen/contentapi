@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
-namespace EaglesJungscharen.Azure.ContentApi;
+namespace EaglesJungscharen.Azure.ContentApi.Functions;
 
 public class RegisterConfiguration(
     ILogger<RegisterConfiguration> logger,
@@ -33,10 +33,10 @@ public class RegisterConfiguration(
     // Legt eine neue Konfiguration an oder überschreibt eine bestehende (mit ?update=true)
     private async Task<IActionResult> HandlePostAsync(HttpRequest req)
     {
-        ContentTypeConfig? config;
+        ContentTypeConfigRequest? request;
         try
         {
-            config = await req.ReadFromJsonAsync<ContentTypeConfig>();
+            request = await req.ReadFromJsonAsync<ContentTypeConfigRequest>();
         }
         catch (JsonException ex)
         {
@@ -44,31 +44,61 @@ public class RegisterConfiguration(
             return new BadRequestObjectResult("Ungültiger JSON-Body.");
         }
 
-        if (config is null
-            || string.IsNullOrWhiteSpace(config.Key)
-            || string.IsNullOrWhiteSpace(config.SiteId)
-            || string.IsNullOrWhiteSpace(config.ListId))
+        if (request is null
+            || string.IsNullOrWhiteSpace(request.Key)
+            || string.IsNullOrWhiteSpace(request.SiteId)
+            || string.IsNullOrWhiteSpace(request.ListId))
         {
             return new BadRequestObjectResult("Die Felder Key, SiteId und ListId sind Pflichtfelder.");
         }
 
-        if (config.FeedType == FeedType.NEWS || config.FeedType == FeedType.AGENDA)
+        if (string.IsNullOrWhiteSpace(request.ActiveColumn))
         {
-            if (string.IsNullOrWhiteSpace(config.SortColumn))
+            return new BadRequestObjectResult("Das Feld ActiveColumn ist ein Pflichtfeld.");
+        }
+
+        if (request.ColumnMappings is null || request.ColumnMappings.Count == 0)
+        {
+            return new BadRequestObjectResult("Das Feld ColumnMappings muss mindestens einen Eintrag enthalten.");
+        }
+
+        if (request.FeedType == FeedType.NEWS || request.FeedType == FeedType.AGENDA)
+        {
+            if (string.IsNullOrWhiteSpace(request.SortColumn))
             {
                 return new BadRequestObjectResult(
-                    $"Das Feld SortColumn ist ein Pflichtfeld für FeedType '{config.FeedType}'.");
+                    $"Das Feld SortColumn ist ein Pflichtfeld für FeedType '{request.FeedType}'.");
             }
 
             var isDateColumn = await _sharepointListService.IsDateColumnAsync(
-                config.SiteId, config.ListId, config.SortColumn);
+                request.SiteId, request.ListId, request.SortColumn);
             if (!isDateColumn)
             {
-                _logger.LogWarning("Spalte '{SortColumn}' ist kein Datum-Typ.", config.SortColumn);
+                _logger.LogWarning("Spalte '{SortColumn}' ist kein Datum-Typ.", request.SortColumn);
                 return new BadRequestObjectResult(
-                    $"Die Spalte '{config.SortColumn}' ist kein Datum-Typ oder existiert nicht in der Liste.");
+                    $"Die Spalte '{request.SortColumn}' ist kein Datum-Typ oder existiert nicht in der Liste.");
             }
         }
+
+        var isBooleanColumn = await _sharepointListService.IsBooleanColumnAsync(
+            request.SiteId, request.ListId, request.ActiveColumn);
+        if (!isBooleanColumn)
+        {
+            _logger.LogWarning("Spalte '{ActiveColumn}' ist kein Boolean-Typ.", request.ActiveColumn);
+            return new BadRequestObjectResult(
+                $"Die Spalte '{request.ActiveColumn}' ist kein Boolean-Typ oder existiert nicht in der Liste.");
+        }
+
+        var config = new ContentTypeConfig
+        {
+            Key = request.Key,
+            SiteId = request.SiteId,
+            ListId = request.ListId,
+            FeedType = request.FeedType,
+            SortColumn = request.SortColumn,
+            ActiveColumn = request.ActiveColumn,
+            ColumnMappings = request.ColumnMappings
+        };
 
         var existing = await _configTableClient.GetByIdAsync(config.Key, "config");
         if (existing is not null)
