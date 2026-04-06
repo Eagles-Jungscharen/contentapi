@@ -20,7 +20,7 @@ public class Info(
 
     [Function("Info")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/info")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "info")] HttpRequest req)
     {
         _logger.LogInformation("Info-Anfrage eingegangen.");
 
